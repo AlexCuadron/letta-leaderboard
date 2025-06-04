@@ -58,6 +58,19 @@ class TauBenchmark(Benchmark):
         # Build dataset from TAU-bench tasks
         self.dataset = self._build_dataset_from_tasks(tasks)
     
+    def configure_user_simulation(self, user_model: str, user_provider: str, user_strategy: str):
+        """
+        Update user simulation configuration.
+        
+        Args:
+            user_model: Model to use for user simulation
+            user_provider: Provider for user simulation model
+            user_strategy: User simulation strategy
+        """
+        self.user_model = user_model
+        self.user_provider = user_provider
+        self.user_strategy = user_strategy
+    
     def _build_dataset_from_tasks(self, tasks) -> List[Dotdict]:
         """Build dataset from TAU-bench tasks."""
         data: List[Dotdict] = []
@@ -497,3 +510,11 @@ tau_bench_airline_dev = TauBenchmark(env_name="airline", task_split="dev")
 # Retail benchmark instances
 tau_bench_retail = TauBenchmark(env_name="retail", task_split="test")
 tau_bench_retail_dev = TauBenchmark(env_name="retail", task_split="dev")
+
+# Advanced user simulation benchmarks with different strategies
+tau_bench_airline_react = TauBenchmark(env_name="airline", task_split="test", user_strategy="REACT", user_model="gpt-4")
+tau_bench_retail_react = TauBenchmark(env_name="retail", task_split="test", user_strategy="REACT", user_model="gpt-4")
+
+# Human-like user simulation benchmarks
+tau_bench_airline_human = TauBenchmark(env_name="airline", task_split="test", user_strategy="HUMAN", user_model="gpt-4")
+tau_bench_retail_human = TauBenchmark(env_name="retail", task_split="test", user_strategy="HUMAN", user_model="gpt-4")

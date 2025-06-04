@@ -262,6 +262,24 @@ async def main():
         default="results",
         help="Result output parent directory name",
     )
+    parser.add_argument(
+        "--tau_bench_user_model",
+        type=str,
+        default="gpt-4o-mini",
+        help="Model to use for TAU-bench user simulation",
+    )
+    parser.add_argument(
+        "--tau_bench_user_provider",
+        type=str,
+        default="openai",
+        help="Provider for TAU-bench user simulation model",
+    )
+    parser.add_argument(
+        "--tau_bench_user_strategy",
+        type=str,
+        default="LLM",
+        help="TAU-bench user simulation strategy (LLM, HUMAN, REACT, VERIFY, REFLECTION)",
+    )
     args = parser.parse_args()
 
     client_settings = {"base_url": args.letta_server}
@@ -271,6 +289,16 @@ async def main():
         f".{args.benchmark}.{args.benchmark}_benchmark", "leaderboard"
     )
     benchmark: Benchmark = getattr(bench_mod, args.benchmark_variable)
+    
+    # Configure TAU-bench user simulation parameters if this is a TAU-bench benchmark
+    if hasattr(benchmark, 'configure_user_simulation') and args.benchmark.startswith('tau_bench'):
+        benchmark.configure_user_simulation(
+            user_model=args.tau_bench_user_model,
+            user_provider=args.tau_bench_user_provider,
+            user_strategy=args.tau_bench_user_strategy
+        )
+        print(f"[green]Configured TAU-bench with user_model={args.tau_bench_user_model}, "
+              f"user_provider={args.tau_bench_user_provider}, user_strategy={args.tau_bench_user_strategy}[/green]")
 
     model_config_path = f"leaderboard/llm_model_configs/{args.model}.json"
     with open(model_config_path) as f:
