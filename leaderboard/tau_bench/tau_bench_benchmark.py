@@ -69,7 +69,7 @@ class TauBenchmark(Benchmark):
                 "instruction": task.get("instruction", ""),
                 "actions": task.get("actions", []),
                 "message": task.get("instruction", ""),  # For compatibility with base class
-                "answer": "TODO: Define expected answer format"  # TODO: Define evaluation criteria
+                "answer": task.get("actions", [])  # Expected sequence of actions from TAU-bench
             }))
         
         return data
