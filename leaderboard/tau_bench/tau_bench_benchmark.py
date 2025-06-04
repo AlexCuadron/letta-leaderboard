@@ -23,16 +23,24 @@ class TauBenchmark(Benchmark):
     managed by TAU-bench's Env object.
     """
     
-    def __init__(self, env_name: str = "airline", task_split: str = "test"):
+    def __init__(self, env_name: str = "airline", task_split: str = "test", 
+                 user_strategy: str = "LLM", user_model: str = "gpt-4o-mini", 
+                 user_provider: str = "openai"):
         """
         Initialize TAU-bench benchmark.
         
         Args:
             env_name: Either "airline" or "retail" 
             task_split: Either "train", "test", or "dev"
+            user_strategy: User simulation strategy (LLM, HUMAN, REACT, VERIFY, REFLECTION)
+            user_model: Model to use for user simulation
+            user_provider: Provider for user simulation model
         """
         self.env_name = env_name
         self.task_split = task_split
+        self.user_strategy = user_strategy
+        self.user_model = user_model
+        self.user_provider = user_provider
         self.benchmark_type = "general"
         
         # Load tasks directly from TAU-bench without initializing user simulation
@@ -83,10 +91,10 @@ class TauBenchmark(Benchmark):
         # Create isolated environment for this task
         env = get_env(
             env_name=self.env_name,
-            user_strategy=UserStrategy.LLM,  # TODO: Make configurable
-            user_model="gpt-4o-mini",  # TODO: Make configurable  
+            user_strategy=getattr(UserStrategy, self.user_strategy.upper()),
+            user_model=self.user_model,
             task_split=self.task_split,
-            user_provider="openai",  # TODO: Make configurable
+            user_provider=self.user_provider,
             task_index=datum.task_index
         )
         
@@ -146,9 +154,102 @@ class TauBenchmark(Benchmark):
         return UsageStatistics({}, {})
 
 
-# Benchmark instances for different TAU-bench configurations
+def _extract_provider_from_model_config(model_config: dict) -> str:
+    """
+    Extract TAU-bench compatible provider from letta model config.
+    
+    Args:
+        model_config: Letta model configuration dictionary
+        
+    Returns:
+        Provider string compatible with TAU-bench
+    """
+    endpoint_type = model_config.get("model_endpoint_type", "openai")
+    
+    # Map letta model endpoint types to TAU-bench providers
+    provider_mapping = {
+        "openai": "openai",
+        "anthropic": "anthropic", 
+        "azure": "azure",
+        "google": "google",
+        "together": "together",
+        "groq": "groq",
+        "bedrock": "bedrock"
+    }
+    
+    return provider_mapping.get(endpoint_type, "openai")
+
+def _extract_model_from_model_config(model_config: dict) -> str:
+    """
+    Extract model name from letta model config.
+    
+    Args:
+        model_config: Letta model configuration dictionary
+        
+    Returns:
+        Model string compatible with TAU-bench
+    """
+    return model_config.get("model", "gpt-4o-mini")
+
+def create_tau_benchmark_from_model_config(env_name: str = "airline", task_split: str = "test",
+                                          user_strategy: str = "LLM", 
+                                          model_config: dict = None) -> TauBenchmark:
+    """
+    Factory function to create TAU-bench benchmarks from letta model configuration.
+    
+    Args:
+        env_name: Either "airline" or "retail"
+        task_split: Either "train", "test", or "dev"
+        user_strategy: User simulation strategy (LLM, HUMAN, REACT, VERIFY, REFLECTION)
+        model_config: Letta model configuration dictionary
+    
+    Returns:
+        Configured TauBenchmark instance
+    """
+    if model_config is None:
+        # Default configuration
+        user_model = "gpt-4o-mini"
+        user_provider = "openai"
+    else:
+        user_model = _extract_model_from_model_config(model_config)
+        user_provider = _extract_provider_from_model_config(model_config)
+    
+    return TauBenchmark(
+        env_name=env_name,
+        task_split=task_split,
+        user_strategy=user_strategy,
+        user_model=user_model,
+        user_provider=user_provider
+    )
+
+def create_tau_benchmark(env_name: str = "airline", task_split: str = "test",
+                        user_strategy: str = "LLM", user_model: str = "gpt-4o-mini",
+                        user_provider: str = "openai") -> TauBenchmark:
+    """
+    Factory function to create TAU-bench benchmarks with custom configurations.
+    
+    Args:
+        env_name: Either "airline" or "retail"
+        task_split: Either "train", "test", or "dev"
+        user_strategy: User simulation strategy (LLM, HUMAN, REACT, VERIFY, REFLECTION)
+        user_model: Model to use for user simulation
+        user_provider: Provider for user simulation model
+    
+    Returns:
+        Configured TauBenchmark instance
+    """
+    return TauBenchmark(
+        env_name=env_name,
+        task_split=task_split,
+        user_strategy=user_strategy,
+        user_model=user_model,
+        user_provider=user_provider
+    )
+
+# Default benchmark instances for different TAU-bench configurations
 tau_bench_airline = TauBenchmark(env_name="airline", task_split="test")
 tau_bench_airline_dev = TauBenchmark(env_name="airline", task_split="dev")
 
-# TODO: Add retail benchmark when ready
-# tau_bench_retail = TauBenchmark(env_name="retail", task_split="test")
+# Retail benchmark instances
+tau_bench_retail = TauBenchmark(env_name="retail", task_split="test")
+tau_bench_retail_dev = TauBenchmark(env_name="retail", task_split="dev")
