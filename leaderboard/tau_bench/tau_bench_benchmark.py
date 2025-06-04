@@ -148,9 +148,8 @@ class TauBenchmark(Benchmark):
         # Store conversation state for evaluation
         self._store_env_state(datum, env, env_reset_response.info)
         
-        # Run multi-turn conversation loop
-        max_turns = 30  # Prevent infinite loops
-        last_response = None
+        # Initialize conversation history
+        conversation_history = []
         
         # Add wiki context to the first message if available
         first_message_content = current_observation
@@ -158,19 +157,30 @@ class TauBenchmark(Benchmark):
             wiki_content = datum._tau_bench_setup['wiki']
             first_message_content = f"Context: {wiki_content}\n\nUser: {current_observation}"
         
+        # Run multi-turn conversation loop
+        max_turns = 30  # Prevent infinite loops
+        last_response = None
+        
         for turn in range(max_turns):
-            # Prepare message content
+            # Prepare message content for this turn
             if turn == 0:
                 message_content = first_message_content
             else:
                 message_content = current_observation
             
-            # Send current observation to Letta agent
+            # Add current user message to conversation history
+            conversation_history.append(MessageCreate(role="user", content=message_content))
+            
+            # Send full conversation history to Letta agent
             response = await client.agents.messages.create(
                 agent_id=agent_id,
-                messages=[MessageCreate(role="user", content=message_content)]
+                messages=conversation_history
             )
             last_response = response
+            
+            # Convert Letta response to MessageCreate and add to history
+            assistant_message = self._convert_letta_response_to_message(response)
+            conversation_history.append(assistant_message)
             
             # Extract action from Letta response
             action = self._extract_action_from_letta_response(response)
@@ -188,6 +198,47 @@ class TauBenchmark(Benchmark):
                 break
         
         return last_response
+    
+    def _convert_letta_response_to_message(self, response: LettaResponse) -> MessageCreate:
+        """
+        Convert LettaResponse to MessageCreate for conversation history.
+        
+        This extracts the assistant's response content and formats it as a MessageCreate
+        object that can be included in the conversation history.
+        """
+        # Extract the main response content
+        content = ""
+        
+        # Handle different response formats
+        if hasattr(response, 'messages') and response.messages:
+            # If response has messages, use the last assistant message
+            for msg in response.messages:
+                if hasattr(msg, 'role') and msg.role == 'assistant':
+                    if hasattr(msg, 'content'):
+                        content = msg.content
+                    elif hasattr(msg, 'text'):
+                        content = msg.text
+        elif hasattr(response, 'content'):
+            content = response.content
+        elif hasattr(response, 'text'):
+            content = response.text
+        elif hasattr(response, 'message'):
+            content = response.message
+        
+        # If we still don't have content, try to extract from tool calls
+        if not content and hasattr(response, 'tool_calls') and response.tool_calls:
+            tool_descriptions = []
+            for tool_call in response.tool_calls:
+                tool_name = getattr(tool_call, 'name', 'unknown_tool')
+                tool_args = getattr(tool_call, 'arguments', {})
+                tool_descriptions.append(f"Called {tool_name} with arguments: {tool_args}")
+            content = "I performed the following actions: " + "; ".join(tool_descriptions)
+        
+        # Fallback to a generic response if no content found
+        if not content:
+            content = "I processed your request."
+        
+        return MessageCreate(role="assistant", content=content)
     
     def _extract_action_from_letta_response(self, response: LettaResponse) -> Action:
         """
