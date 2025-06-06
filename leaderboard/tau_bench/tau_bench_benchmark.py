@@ -120,14 +120,47 @@ class TauBenchmark(Benchmark):
         # TODO: Configure Letta agent with TAU-bench tools
         # This would involve:
         # 1. Converting TAU-bench tool definitions to Letta format
+        tool_info_txt  = self._tool_info(tools_info)
+        system_prompt  = f"{tool_info_txt}\n\n{wiki_content}"
+        letta_tools = []
+        for name, spec in tools_info.items():
+            letta_tools.append(
+                {
+                    'name': name,
+                    'description': spec['description'],
+                    'parameters': spec['parameters']
+                }
+            )
         # 2. Adding tools to the agent
         # 3. Setting up the agent's system message with wiki content
-        # 
+        await client.agents.update(
+            name=agent_id,
+            tools=letta_tools,
+            memory_blocks=[{
+                'label': 'system',
+                'value': system_prompt
+            }],
+            embedding='openai/text-embedding-3-small'
+        )
         # For now, we store the information for use in the conversation loop
         # The actual tool integration would depend on Letta's tool API
-        
+              
         print(f"Setup agent for {self.env_name} domain with {len(tools_info)} tools")
         print(f"Available tools: {[tool['function']['name'] for tool in tools_info]}")
+    
+    def _tool_info(self, tools: dict) -> str:
+        """
+        This helper func helps with converting TAU-bench `tools_info` dict into a readable list.
+        """
+        lines = [
+            "Available tools (call with: Action: tool_name(arg1=\"…\", ...)):\n"
+        ]
+        for name, spec in tools.items():
+            props = spec["parameters"]["properties"]
+            arg_list = ", ".join(props.keys())
+            desc = spec.get("description", "")
+            lines.append(f"• {name}({arg_list})\n  - {desc}\n")
+        return "\n".join(lines).strip()
     
     async def get_response(
         self, 
