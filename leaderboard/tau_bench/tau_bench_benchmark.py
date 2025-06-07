@@ -77,12 +77,14 @@ class TauBenchmark(Benchmark):
         
         for i, task in enumerate(tasks):
             data.append(Dotdict({
+                "annotator": task.get("annotator", ""),
                 "task_index": i,
                 "user_id": task.get("user_id", ""),
                 "instruction": task.get("instruction", ""),
                 "actions": task.get("actions", []),
                 "message": task.get("instruction", ""),  # For compatibility with base class
-                "answer": task.get("actions", [])  # Expected sequence of actions from TAU-bench
+                "answer": task.get("actions", []),  # Expected sequence of actions from TAU-bench
+                "outputs": task.get("outputs", [])
             }))
         
         return data
