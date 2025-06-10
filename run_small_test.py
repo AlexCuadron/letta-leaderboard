@@ -1,19 +1,53 @@
+from leaderboard.tau_bench import create_tau_benchmark
+from letta_client import AsyncLetta, MessageCreate, LettaResponse
 import asyncio, os
-from letta_client import AsyncLetta
-from leaderboard.tau_bench.tau_bench_benchmark import TauBenchmark
+import re
 
 async def main():
-    bench  = TauBenchmark(env_name="retail", task_split="dev")
-    client = AsyncLetta(
-        base_url=os.environ["LETTA_BASE_URL"],
-        token=os.environ["LETTA_API_KEY"],
+    bench = create_tau_benchmark(env_name="retail", task_split="dev")
+    client = AsyncLetta(base_url="http://localhost:8283",
+        token="local")
+    agent = await client.agents.create(
+    name="tau-test-agent",                 
+    model="openai/gpt-4o-mini",
+    embedding="openai/text-embedding-3-small"
+)
+    agent_id = agent.id
+    print("THE AGENT IDDDDDD: ", agent_id)
+    datum = bench.dataset[0]
+    await bench.setup_agent(datum, client, agent_id)
+    resp = await bench.get_response(client, agent_id, datum)
+    human_friendly_response(resp)
+    
+    if hasattr(datum, "_tau_bench_state"):
+        st = datum._tau_bench_state
+        print("Reward:", st.get("reward"))
+        print("Done flag:", st.get("done"))
+
+def human_friendly_response(response: LettaResponse) -> str:
+    joined = LettaResponse.__str__(response)
+    user_messages = re.findall(
+    r"role='user'.*?text='(.*?)'", 
+    joined
+    )
+    assistant_messages = re.findall(
+        r"name='send_message'.*?text='(.*?)'", 
+        joined
     )
 
-    agent = await client.agents.create(model="openai/gpt-3.5-turbo")
+    def clean(msg):
+        msg = msg.encode().decode('unicode_escape')
+        msg = re.sub(r'\\n', '\n', msg)
+        return msg.strip()
 
-    datum = bench.dataset[0]
-    await bench.setup_agent(datum, client, agent.id)
-    resp  = await bench.get_response(client, agent.id, datum)
-    print("assistant →", resp.content[:120])
+    print("USER MESSAGES:")
+    for m in user_messages:
+        print(clean(m))
+
+    print("\nASSISTANT MESSAGES:")
+    for m in assistant_messages:
+        print(clean(m))
+
+    
 
 asyncio.run(main())
