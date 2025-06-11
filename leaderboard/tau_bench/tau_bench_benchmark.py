@@ -530,25 +530,43 @@ def create_tau_benchmark(env_name: str = "airline", task_split: str = "test",
         user_provider=user_provider
     )
 
-# Default benchmark instances for different TAU-bench configurations
+# TAU-bench configuration mapping
+# Use --benchmark=tau_bench --benchmark_variable=<config_name>
+# This is much more flexible than having redundant benchmark names
 
-tau_bench_airline = TauBenchmark(env_name="airline", task_split="test")
-tau_bench_airline_dev = TauBenchmark(env_name="airline", task_split="dev")
+# Basic configurations
+airline_test = TauBenchmark(env_name="airline", task_split="test")
+airline_dev = TauBenchmark(env_name="airline", task_split="dev")
+airline_train = TauBenchmark(env_name="airline", task_split="train")
 
-# Retail benchmark instances
+retail_test = TauBenchmark(env_name="retail", task_split="test")
+retail_dev = TauBenchmark(env_name="retail", task_split="dev")
+retail_train = TauBenchmark(env_name="retail", task_split="train")
 
-tau_bench_retail = TauBenchmark(env_name="retail", task_split="test")
-tau_bench_retail_dev = TauBenchmark(env_name="retail", task_split="dev")
+# Advanced user simulation strategies
+airline_react = TauBenchmark(env_name="airline", task_split="test", user_strategy="REACT", user_model="gpt-4")
+airline_human = TauBenchmark(env_name="airline", task_split="test", user_strategy="HUMAN", user_model="gpt-4")
+airline_verify = TauBenchmark(env_name="airline", task_split="test", user_strategy="VERIFY", user_model="gpt-4")
+airline_reflection = TauBenchmark(env_name="airline", task_split="test", user_strategy="REFLECTION", user_model="gpt-4")
 
-# Advanced user simulation benchmarks with different strategies
+retail_react = TauBenchmark(env_name="retail", task_split="test", user_strategy="REACT", user_model="gpt-4")
+retail_human = TauBenchmark(env_name="retail", task_split="test", user_strategy="HUMAN", user_model="gpt-4")
+retail_verify = TauBenchmark(env_name="retail", task_split="test", user_strategy="VERIFY", user_model="gpt-4")
+retail_reflection = TauBenchmark(env_name="retail", task_split="test", user_strategy="REFLECTION", user_model="gpt-4")
 
-tau_bench_airline_react = TauBenchmark(env_name="airline", task_split="test", user_strategy="REACT", user_model="gpt-4")
-tau_bench_retail_react = TauBenchmark(env_name="retail", task_split="test", user_strategy="REACT", user_model="gpt-4")
+# Dev split with advanced strategies
+airline_dev_react = TauBenchmark(env_name="airline", task_split="dev", user_strategy="REACT", user_model="gpt-4")
+retail_dev_react = TauBenchmark(env_name="retail", task_split="dev", user_strategy="REACT", user_model="gpt-4")
 
-# Human-like user simulation benchmarks
-
-tau_bench_airline_human = TauBenchmark(env_name="airline", task_split="test", user_strategy="HUMAN", user_model="gpt-4")
-tau_bench_retail_human = TauBenchmark(env_name="retail", task_split="test", user_strategy="HUMAN", user_model="gpt-4")
+# Backward compatibility (deprecated - use the new format above)
+tau_bench_airline = airline_test  # DEPRECATED: use --benchmark_variable=airline_test
+tau_bench_airline_dev = airline_dev  # DEPRECATED: use --benchmark_variable=airline_dev
+tau_bench_retail = retail_test  # DEPRECATED: use --benchmark_variable=retail_test
+tau_bench_retail_dev = retail_dev  # DEPRECATED: use --benchmark_variable=retail_dev
+tau_bench_airline_react = airline_react  # DEPRECATED: use --benchmark_variable=airline_react
+tau_bench_retail_react = retail_react  # DEPRECATED: use --benchmark_variable=retail_react
+tau_bench_airline_human = airline_human  # DEPRECATED: use --benchmark_variable=airline_human
+tau_bench_retail_human = retail_human  # DEPRECATED: use --benchmark_variable=retail_human
 
 
 
