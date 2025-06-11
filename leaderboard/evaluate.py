@@ -285,9 +285,15 @@ async def main():
     client_settings = {"base_url": args.letta_server}
     client = AsyncLetta(**client_settings)
 
-    bench_mod = importlib.import_module(
-        f".{args.benchmark}.{args.benchmark}_benchmark", "leaderboard"
-    )
+    # Handle TAU-bench benchmarks specially since they all use the same module
+    if args.benchmark.startswith('tau_bench'):
+        bench_mod = importlib.import_module(
+            ".tau_bench.tau_bench_benchmark", "leaderboard"
+        )
+    else:
+        bench_mod = importlib.import_module(
+            f".{args.benchmark}.{args.benchmark}_benchmark", "leaderboard"
+        )
     benchmark: Benchmark = getattr(bench_mod, args.benchmark_variable)
     
     # Configure TAU-bench user simulation parameters if this is a TAU-bench benchmark
