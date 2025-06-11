@@ -148,7 +148,8 @@ class TauBenchmark(Benchmark):
             description = piece['function']['description']
             parameters = piece['function']['parameters']
             properties = parameters['properties']
-            final_string = f'●{name}({', '.join(list(properties.keys()))}): {description}'
+            param_strings = [f'{k}="{v}"' for k, v in properties.items()]
+            final_string = f'{name}({", ".join(param_strings)}): {description}'
             lines.append(final_string)
         return "\n".join(lines).strip()
     
@@ -211,7 +212,7 @@ class TauBenchmark(Benchmark):
             # Send full conversation history to Letta agent
             response = await client.agents.messages.create(
                 agent_id=agent_id,
-                messages=[user_msg]
+                messages=conversation_history
             )
             last_response = response
             
