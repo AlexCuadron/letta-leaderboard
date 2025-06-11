@@ -77,12 +77,14 @@ class TauBenchmark(Benchmark):
         
         for i, task in enumerate(tasks):
             data.append(Dotdict({
+                "annotator": task.get("annotator", ""),
                 "task_index": i,
                 "user_id": task.get("user_id", ""),
                 "instruction": task.get("instruction", ""),
                 "actions": task.get("actions", []),
                 "message": task.get("instruction", ""),  # For compatibility with base class
-                "answer": task.get("actions", [])  # Expected sequence of actions from TAU-bench
+                "answer": task.get("actions", []),  # Expected sequence of actions from TAU-bench
+                "outputs": task.get("outputs", [])
             }))
         
         return data
@@ -120,14 +122,35 @@ class TauBenchmark(Benchmark):
         # TODO: Configure Letta agent with TAU-bench tools
         # This would involve:
         # 1. Converting TAU-bench tool definitions to Letta format
+        tool_info_txt  = self._tool_info(tools_info)
+        system_prompt  = f"{tool_info_txt}\n\n{wiki_content}"
         # 2. Adding tools to the agent
         # 3. Setting up the agent's system message with wiki content
-        # 
+        await client.agents.modify(
+            agent_id=agent_id,
+            system=system_prompt
+                             )
         # For now, we store the information for use in the conversation loop
         # The actual tool integration would depend on Letta's tool API
-        
+              
         print(f"Setup agent for {self.env_name} domain with {len(tools_info)} tools")
         print(f"Available tools: {[tool['function']['name'] for tool in tools_info]}")
+    
+    def _tool_info(self, tools: dict) -> str:
+        """
+        This helper func helps with converting TAU-bench `tools_info` dict into a readable list.
+        """
+        lines = [
+            "Available tools (call with: Action: <tool_name>(arg1=\"…\", ...)):\n"
+        ]
+        for piece in tools:
+            name = piece['function']['name']
+            description = piece['function']['description']
+            parameters = piece['function']['parameters']
+            properties = parameters['properties']
+            final_string = f'●{name}({', '.join(list(properties.keys()))}): {description}'
+            lines.append(final_string)
+        return "\n".join(lines).strip()
     
     async def get_response(
         self, 
@@ -171,7 +194,7 @@ class TauBenchmark(Benchmark):
             first_message_content = f"Context: {wiki_content}\n\nUser: {current_observation}"
         
         # Run multi-turn conversation loop
-        max_turns = 30  # Prevent infinite loops
+        max_turns = 10  # Prevent infinite loops
         last_response = None
         
         for turn in range(max_turns):
@@ -182,12 +205,13 @@ class TauBenchmark(Benchmark):
                 message_content = current_observation
             
             # Add current user message to conversation history
-            conversation_history.append(MessageCreate(role="user", content=message_content))
+            user_msg = MessageCreate(role="user", content=message_content)
+            conversation_history.append(user_msg) 
             
             # Send full conversation history to Letta agent
             response = await client.agents.messages.create(
                 agent_id=agent_id,
-                messages=conversation_history
+                messages=[user_msg]
             )
             last_response = response
             
@@ -205,10 +229,12 @@ class TauBenchmark(Benchmark):
             current_observation = env_response.observation
             
             # Check if task is complete
+            """
             if env_response.done:
                 # Store final evaluation results
                 self._store_final_results(datum, env_response)
                 break
+            """
         
         return last_response
     
@@ -504,17 +530,24 @@ def create_tau_benchmark(env_name: str = "airline", task_split: str = "test",
     )
 
 # Default benchmark instances for different TAU-bench configurations
+
 tau_bench_airline = TauBenchmark(env_name="airline", task_split="test")
 tau_bench_airline_dev = TauBenchmark(env_name="airline", task_split="dev")
 
 # Retail benchmark instances
+
 tau_bench_retail = TauBenchmark(env_name="retail", task_split="test")
 tau_bench_retail_dev = TauBenchmark(env_name="retail", task_split="dev")
 
 # Advanced user simulation benchmarks with different strategies
+
 tau_bench_airline_react = TauBenchmark(env_name="airline", task_split="test", user_strategy="REACT", user_model="gpt-4")
 tau_bench_retail_react = TauBenchmark(env_name="retail", task_split="test", user_strategy="REACT", user_model="gpt-4")
 
 # Human-like user simulation benchmarks
+
 tau_bench_airline_human = TauBenchmark(env_name="airline", task_split="test", user_strategy="HUMAN", user_model="gpt-4")
 tau_bench_retail_human = TauBenchmark(env_name="retail", task_split="test", user_strategy="HUMAN", user_model="gpt-4")
+
+
+
