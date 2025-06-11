@@ -188,11 +188,17 @@ class TauBenchmark(Benchmark):
         # Initialize conversation history
         conversation_history = []
         
-        # Add wiki context to the first message if available
-        first_message_content = current_observation
+        # Create initial messages - system message with wiki content and user message with observation
         if hasattr(datum, '_tau_bench_setup') and 'wiki' in datum._tau_bench_setup:
             wiki_content = datum._tau_bench_setup['wiki']
-            first_message_content = f"Context: {wiki_content}\n\nUser: {current_observation}"
+            # Add system message with wiki content
+            system_msg = MessageCreate(role="system", content=f"{wiki_content}")
+            conversation_history.append(system_msg)
+            # User message contains just the observation
+            first_user_message_content = current_observation
+        else:
+            # If no wiki content, just use the observation as user message
+            first_user_message_content = current_observation
         
         # Run multi-turn conversation loop
         max_turns = 10  # Prevent infinite loops
@@ -201,27 +207,30 @@ class TauBenchmark(Benchmark):
         for turn in range(max_turns):
             # Prepare message content for this turn
             if turn == 0:
-                message_content = first_message_content
+                message_content = first_user_message_content
             else:
                 message_content = current_observation
             
             # Add current user message to conversation history
             user_msg = MessageCreate(role="user", content=message_content)
-            conversation_history.append(user_msg) 
-            
+            conversation_history.append(user_msg)
+
             # Send full conversation history to Letta agent
             response = await client.agents.messages.create(
                 agent_id=agent_id,
                 messages=conversation_history
             )
+
             last_response = response
             
             # Convert Letta response to MessageCreate and add to history
-            assistant_message = self._convert_letta_response_to_message(response)
-            conversation_history.append(assistant_message)
+            assistant_message = response.messages[-1]
+            conversation_history.append(MessageCreate(role="assistant", content=f"{assistant_message.content}"))
             
             # Extract action from Letta response
             action = self._extract_action_from_letta_response(response)
+
+            import pdb; pdb.set_trace()
             
             # Execute action in TAU-bench environment
             env_response = env.step(action)
@@ -320,7 +329,7 @@ class TauBenchmark(Benchmark):
         elif hasattr(response, 'messages') and response.messages:
             # Extract content from the last assistant message
             for message in reversed(response.messages):
-                if hasattr(message, 'role') and message.role == 'assistant':
+                if hasattr(message, 'message_type') and message.message_type == 'assistant_message':
                     if hasattr(message, 'content') and message.content:
                         content = message.content
                         break
