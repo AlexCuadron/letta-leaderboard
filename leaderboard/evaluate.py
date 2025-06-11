@@ -323,7 +323,8 @@ async def main():
         def create_base_agent_fun(c, d):
             return benchmark.create_agent_fun(c, d, llm_config, embedding_config)
     else:
-        create_base_agent_fun = create_base_agent
+        def create_base_agent_fun(c, d):
+            return create_base_agent(c, d, llm_config, embedding_config)
 
     benchmark.truncate_dataset(args.dataset_size)
 
