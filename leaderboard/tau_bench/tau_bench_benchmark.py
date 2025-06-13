@@ -100,6 +100,7 @@ class TauBenchmark(Benchmark):
     ) -> str:
         from letta_client.core.api_error import ApiError
         from textwrap import dedent
+        import json
         
         # The tool creation should be done here:
         temp_env = get_env(
@@ -117,26 +118,42 @@ class TauBenchmark(Benchmark):
         for schema in tool_schemas:
             name = schema["function"]["name"]
             params = schema["function"]["parameters"]
+            json_schema = {
+            "type": "object",
+            "properties": params,
+            "required": list(params.keys()),
+            }
             desc = schema["function"]["description"]
             wrapper_name = f"{name}_wrapper"
             source_code = dedent(f"""
-def {wrapper_name}(**kwargs):                        
-    \"\"\"TAU-bench wrapper for {name}.\"\"\"
-    import os, json
-    from tau_bench.tools import {name}
-    data = json.loads(os.getenv("TAU_DATA"))
-    return {name}(data=data, **kwargs)
-""")
+            def {wrapper_name}(**kwargs):
+                \"\"\"Wrapper for {name}.invoke that always returns a dict\"\"\"
+                import os, json
+                from tau_bench.tools import {name}  # or whatever tool name
+
+                data = json.loads(os.environ["TAU_DATA"])
+                raw = {name}.invoke(data=data, **kwargs)
+
+                if isinstance(raw, dict):
+                    return raw
+                return {{ "result": raw }}
+            """)
             try:
                 created = await client.tools.create(
                     source_code=source_code,
                     description=desc,
-                    args_json_schema=params,
+                    args_json_schema=json_schema,
                 )
                 tool_id.append(created.id)
             except ApiError as a:
                 if a.status_code == 409:
-                    existing = await client.tools.list(name=f"{name}_wrapper")
+                    existing = (await client.tools.list(name=wrapper_name))[0]
+                    await client.tools.update(
+                    jawbone_id=existing.id,
+                    source_code=source_code,
+                    args_json_schema=json_schema,
+                    description=desc,
+                    )
                     tool_id.append(existing[0].id)
                 else:
                     raise 
