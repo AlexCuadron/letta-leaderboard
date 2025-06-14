@@ -1,0 +1,63 @@
+"""TAU-bench benchmark integration for letta-leaderboard."""
+
+from .tau_bench_benchmark import (
+    TauBenchmark,
+    create_tau_benchmark,
+    # New flexible configuration format
+    airline_test,
+    airline_dev,
+    airline_train,
+    retail_test,
+    retail_dev,
+    retail_train,
+    airline_react,
+    airline_human,
+    airline_verify,
+    airline_reflection,
+    retail_react,
+    retail_human,
+    retail_verify,
+    retail_reflection,
+    airline_dev_react,
+    retail_dev_react,
+    # Backward compatibility (deprecated)
+    tau_bench_airline,
+    tau_bench_airline_dev,
+    tau_bench_retail,
+    tau_bench_retail_dev,
+    tau_bench_airline_react,
+    tau_bench_retail_react,
+    tau_bench_airline_human,
+    tau_bench_retail_human,
+)
+
+__all__ = [
+    "TauBenchmark",
+    "create_tau_benchmark",
+    # New flexible configuration format
+    "airline_test",
+    "airline_dev", 
+    "airline_train",
+    "retail_test",
+    "retail_dev",
+    "retail_train",
+    "airline_react",
+    "airline_human",
+    "airline_verify",
+    "airline_reflection",
+    "retail_react",
+    "retail_human",
+    "retail_verify",
+    "retail_reflection",
+    "airline_dev_react",
+    "retail_dev_react",
+    # Backward compatibility (deprecated)
+    "tau_bench_airline",
+    "tau_bench_airline_dev",
+    "tau_bench_retail",
+    "tau_bench_retail_dev",
+    "tau_bench_airline_react",
+    "tau_bench_retail_react",
+    "tau_bench_airline_human",
+    "tau_bench_retail_human",
+]

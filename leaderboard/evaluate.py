@@ -262,15 +262,49 @@ async def main():
         default="results",
         help="Result output parent directory name",
     )
+    parser.add_argument(
+        "--tau_bench_user_model",
+        type=str,
+        default="gpt-4o-mini",
+        help="Model to use for TAU-bench user simulation",
+    )
+    parser.add_argument(
+        "--tau_bench_user_provider",
+        type=str,
+        default="openai",
+        help="Provider for TAU-bench user simulation model",
+    )
+    parser.add_argument(
+        "--tau_bench_user_strategy",
+        type=str,
+        default="LLM",
+        help="TAU-bench user simulation strategy (LLM, HUMAN, REACT, VERIFY, REFLECTION)",
+    )
     args = parser.parse_args()
 
     client_settings = {"base_url": args.letta_server}
     client = AsyncLetta(**client_settings)
 
-    bench_mod = importlib.import_module(
-        f".{args.benchmark}.{args.benchmark}_benchmark", "leaderboard"
-    )
+    # Handle TAU-bench benchmarks specially since they all use the same module
+    if args.benchmark.startswith('tau_bench'):
+        bench_mod = importlib.import_module(
+            ".tau_bench.tau_bench_benchmark", "leaderboard"
+        )
+    else:
+        bench_mod = importlib.import_module(
+            f".{args.benchmark}.{args.benchmark}_benchmark", "leaderboard"
+        )
     benchmark: Benchmark = getattr(bench_mod, args.benchmark_variable)
+    
+    # Configure TAU-bench user simulation parameters if this is a TAU-bench benchmark
+    if hasattr(benchmark, 'configure_user_simulation') and args.benchmark.startswith('tau_bench'):
+        benchmark.configure_user_simulation(
+            user_model=args.tau_bench_user_model,
+            user_provider=args.tau_bench_user_provider,
+            user_strategy=args.tau_bench_user_strategy
+        )
+        print(f"[green]Configured TAU-bench with user_model={args.tau_bench_user_model}, "
+              f"user_provider={args.tau_bench_user_provider}, user_strategy={args.tau_bench_user_strategy}[/green]")
 
     model_config_path = f"leaderboard/llm_model_configs/{args.model}.json"
     with open(model_config_path) as f:
@@ -289,7 +323,8 @@ async def main():
         def create_base_agent_fun(c, d):
             return benchmark.create_agent_fun(c, d, llm_config, embedding_config)
     else:
-        create_base_agent_fun = create_base_agent
+        def create_base_agent_fun(c, d):
+            return create_base_agent(c, d, llm_config, embedding_config)
 
     benchmark.truncate_dataset(args.dataset_size)
 

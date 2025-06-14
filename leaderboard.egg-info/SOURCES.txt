@@ -1,0 +1,6 @@
+README.md
+setup.py
+leaderboard.egg-info/PKG-INFO
+leaderboard.egg-info/SOURCES.txt
+leaderboard.egg-info/dependency_links.txt
+leaderboard.egg-info/top_level.txt

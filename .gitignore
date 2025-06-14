@@ -7,4 +7,8 @@ results/
 
 results*
 
-.idea
+.idea.venv/
+.venv/
+.venv/
+.venv/
+.venv/
